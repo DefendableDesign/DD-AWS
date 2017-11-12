@@ -22,7 +22,7 @@ resource "aws_iam_role_policy" "p" {
   "Statement": [
       {
        "Effect": "Allow",
-       "Action": ["s3:PutObject"],
+       "Action": ["s3:PutObject*"],
        "Resource": ["${aws_s3_bucket.b.arn}/*"],
        "Condition":
         {

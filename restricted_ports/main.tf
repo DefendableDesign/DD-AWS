@@ -2,8 +2,11 @@ resource "aws_config_config_rule" "r" {
   name = "Check-EC2-OpenPorts"
 
   source {
-    owner             = "AWS"
-    source_identifier = "RESTRICTED_INCOMING_TRAFFIC"
+    owner             = "CUSTOM_LAMBDA"
+    source_identifier = "${aws_lambda_function.lf.arn}"
+    source_detail = {
+      message_type = "ConfigurationItemChangeNotification"
+    }
   }
 
   scope {
@@ -12,11 +15,8 @@ resource "aws_config_config_rule" "r" {
 
   input_parameters = <<JSON
 {
-    "blockedPort1":"3389",
-    "blockedPort2":"22",
-    "blockedPort3":"21",
-    "blockedPort4":"1433",
-    "blockedPort5":"3306"
+    "sqsUrl":"${aws_sqs_queue.q.id}",
+    "prohibitedPorts":"22,1433,3306,3389"
 }
 JSON
 
