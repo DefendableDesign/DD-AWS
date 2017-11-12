@@ -42,7 +42,7 @@ def evaluate_compliance(configuration_item, prohibited_ports):
         prohibited_ports
     )
 
-    if len(violations) > 0:
+    if len(violations[0]) > 0:
         annotation = "A forbidden port ({0}) is exposed to the internet.".format(', '.join(str(x) for x in violations[0]))
         return {
             "compliance_type": "NON_COMPLIANT",
