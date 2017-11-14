@@ -57,7 +57,7 @@ def evaluate_compliance(configuration_item, prohibited_ports):
 def queue_violation(sqs_url, sg_id, ip_permission):
     sqs = boto3.resource("sqs")
     queue = sqs.Queue(sqs_url)
-    message = [sg_id, ip_permission]
+    message = {"security_group" : sg_id, "ip_permission" : ip_permission}
     response = queue.send_message(
         MessageBody=json.dumps(message)
     )
@@ -77,10 +77,12 @@ def lambda_handler(event, context):
         result_token = event["resultToken"]
 
     evaluation = evaluate_compliance(configuration_item, prohibited_ports)
-    
+    print(evaluation)
+
     if sqs_url:
-        for v in evaluation["violations"][1]:
-            queue_violation(sqs_url, configuration_item["configuration"].get("groupId"), v)
+        if "violations" in evaluation:
+            for v in evaluation["violations"][1]:
+                queue_violation(sqs_url, configuration_item["configuration"].get("groupId"), v)
 
     print(evaluation)
     

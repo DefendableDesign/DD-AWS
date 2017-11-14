@@ -3,7 +3,7 @@ resource "aws_config_config_rule" "r" {
 
   source {
     owner             = "CUSTOM_LAMBDA"
-    source_identifier = "${aws_lambda_function.lf.arn}"
+    source_identifier = "${aws_lambda_function.lf_config.arn}"
     source_detail = {
       message_type = "ConfigurationItemChangeNotification"
     }
