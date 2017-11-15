@@ -5,5 +5,8 @@
 # Module directory
 .terraform/
 
-# VS Code
+# VS Code directory
 .vscode/
+
+# Mac
+.DS_Store
