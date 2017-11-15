@@ -4,4 +4,3 @@ resource "aws_config_configuration_recorder_status" "recorder_status" {
   is_enabled = true
   depends_on = ["aws_config_delivery_channel.delivery_channel"]
 }
-

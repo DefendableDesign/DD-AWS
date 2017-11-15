@@ -3,7 +3,7 @@ resource "aws_config_config_rule" "r" {
 
   source {
     owner             = "CUSTOM_LAMBDA"
-    source_identifier = "${aws_lambda_function.lf_config.arn}"
+    source_identifier = "${aws_lambda_function.lf_configrule.arn}"
     source_detail = {
       message_type = "ConfigurationItemChangeNotification"
     }
@@ -16,10 +16,9 @@ resource "aws_config_config_rule" "r" {
   input_parameters = <<JSON
 {
     "sqsUrl":"${aws_sqs_queue.q.id}",
-    "prohibitedPorts":"22,1433,3306,3389"
+    "prohibitedPorts":"${var.prohibited_ports}"
 }
 JSON
 
   count = "${var.config_is_setup}"
 }
-

@@ -8,4 +8,3 @@ resource "aws_config_config_rule" "r" {
 
   count = "${var.config_is_setup}"
 }
-

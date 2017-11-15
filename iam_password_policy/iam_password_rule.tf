@@ -20,4 +20,3 @@ JSON
 
   count = "${var.config_is_setup}"
 }
-
