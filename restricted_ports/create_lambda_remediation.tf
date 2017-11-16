@@ -85,5 +85,9 @@ resource "aws_cloudwatch_event_target" "lf" {
   rule      = "${aws_cloudwatch_event_rule.trigger_remediation.name}"
   target_id = "DD-AWSConfig-EC2ExposedPorts-Remediation"
   arn       = "${aws_lambda_function.lf_remediation.arn}"
-  input     = "{\"sqsUrl\": \"https://sqs.ap-southeast-2.amazonaws.com/176384081491/DD_AWSConfig_EC2ExposedPorts_RemediationQueue\" }"
+  input     = <<JSON
+{
+    "sqsUrl":"${aws_sqs_queue.q.id}"
+}
+JSON
 }
