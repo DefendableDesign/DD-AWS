@@ -5,7 +5,7 @@
 
 import json
 import boto3
-
+import botocore
 
 def receive_messages(queue):
     """
@@ -16,68 +16,69 @@ def receive_messages(queue):
     response = queue.receive_messages(
         AttributeNames=['All'],
         MessageAttributeNames=['All'],
-        MaxNumberOfMessages=10,
-        WaitTimeSeconds=5,
+        MaxNumberOfMessages=5,
+        WaitTimeSeconds=3,
     )
     return response
 
-def remediate_violation(security_group, ip_permissions):
+
+def remediate_violation(security_group, ip_permission):
     """
-    Deletes the violating security group ip_permissions item detected by AWS Config
+    Deletes the violating security group ip_permission item detected by AWS Config
     :param security_group: The name of the security group to operate on
-    :param ip_permissions: The ip_permissions object detected by AWS Config
+    :param ip_permission: The ip_permission object detected by AWS Config
     :return:
     """
     ec2 = boto3.resource('ec2')
     sg = ec2.SecurityGroup(security_group)
 
-    ip_permissions = reformat_aws_to_boto(ip_permissions)
+    ip_permission = deserialize_ippermission(ip_permission)
 
-    print("Revoking ingress")
-    print(security_group)
-    print(ip_permissions)
+    log_message = {"action" : "RevokeSecurityGroupIngress", "securityGroupId" : security_group, "ipPermission" : ip_permission}
+    print(json.dumps(log_message))
 
     try:
         response = sg.revoke_ingress(
-            IpPermissions=[ip_permissions],
+            IpPermissions=[ip_permission],
             DryRun=False
         )
-    except Exception as e:
-        print e
-    else:
-        return True
+    except botocore.exceptions.ClientError as e:
+        if e.response.get("Error", {}).get("Code") == "InvalidPermission.NotFound":
+            pass # If the offending security group entry no longer exists, do nothing.
+        else:
+            raise e
 
 
 def upperfirst(x):
     return x[0].upper() + x[1:]
 
 
-def reformat_aws_to_boto(af):
+def deserialize_ippermission(json_ipp):
     """
-    Recursive nightmare that turns the AWS-native JSON representation of an ipPermission to a boto3-friendly dict
+    Deserializes an AWS ipPermission JSON object as a boto3 compatible dict.
     """
-    bf = {}
-    if not isinstance(af, basestring):
-        for k in af:
-            v = af[k]
+    boto_ipp = {}
+    if not isinstance(json_ipp, basestring):
+        for k in json_ipp:
+            v = json_ipp[k]
             if type(v) is list:
                 nv = []
                 for li in v:
-                    nv.append(reformat_aws_to_boto(li))
+                    nv.append(deserialize_ippermission(li))
             elif type(v) is dict:
-                nv = reformat_aws_to_boto(v)
+                nv = deserialize_ippermission(v)
             else:
                 nv = v
 
             if k == "ipv4Ranges":
-                bf["IpRanges"] = nv
+                boto_ipp["IpRanges"] = nv
             elif k == "ipRanges":
                 pass
             else:
-                bf[upperfirst(k)] = nv
-        return bf
+                boto_ipp[upperfirst(k)] = nv
+        return boto_ipp
     else:
-        return af
+        return json_ipp
 
 
 def lambda_handler(event, context):
@@ -85,7 +86,7 @@ def lambda_handler(event, context):
     sqs = boto3.resource("sqs")
     queue = sqs.Queue(sqs_url)
 
-    reverted = 0
+    processed = 0
 
     while True:
         messages = receive_messages(queue)
@@ -97,7 +98,9 @@ def lambda_handler(event, context):
             remediate_violation(body.get("security_group"),
                                 body.get("ip_permission"))
             msg.delete()
-            reverted += 1
+            processed += 1
 
-    print("{} ip permissions revoked.".format(reverted))
+    log_message = {"action" : "RemediationComplete", "messagesProcessed" : processed}
+    print(json.dumps(log_message))
+
     return True
