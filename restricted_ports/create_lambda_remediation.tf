@@ -64,7 +64,7 @@ resource "aws_lambda_function" "lf_remediation" {
     handler          = "DD-AWSConfig-EC2ExposedPorts-Remediation.lambda_handler"
     source_code_hash = "${base64sha256(file("${data.archive_file.lambda_remediation.output_path}"))}"
     runtime          = "python2.7"
-    timeout          = "10"
+    timeout          = "60"
 }
 
 resource "aws_lambda_permission" "with_events" {
@@ -77,10 +77,10 @@ resource "aws_lambda_permission" "with_events" {
 resource "aws_cloudwatch_event_rule" "trigger_remediation" {
   name        = "DD_AWSConfig_EC2ExposedPorts_Remediation_Trigger"
   description = "Periodically triggers the EC2ExposedPorts remediation process."
+  is_enabled  = "${var.enable_auto_response}"
   schedule_expression = "rate(5 minutes)"
 }
 
-#Need to change this to watch CloudTrail for Config PutEvaluations as trigger
 resource "aws_cloudwatch_event_target" "lf" {
   rule      = "${aws_cloudwatch_event_rule.trigger_remediation.name}"
   target_id = "DD-AWSConfig-EC2ExposedPorts-Remediation"
