@@ -20,6 +20,7 @@ module "restricted_ports" {
     source = "./restricted_ports"
     config_is_setup = "${module.config_setup.is_complete}"
     prohibited_ports = "22,1433,3306,3389"
+    enable_auto_response = "false"
 }
 
 module "s3_public_read" {
