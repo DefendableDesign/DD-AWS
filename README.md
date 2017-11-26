@@ -1,5 +1,5 @@
 # Defendable Design for AWS
-The [Defendable Design project](https://github.com/defendabledesign) attempts to build a standard, self-healing designs for strong security.
+The [Defendable Design project](https://github.com/defendabledesign) attempts to build standard, self-healing designs for strong security.
 
 Defendable Design for AWS (DD-AWS) uses [Terraform](https://www.terraform.io/) to orchestrate AWS-native functionality, including [AWS CloudTrail](https://aws.amazon.com/cloudtrail/), [AWS Config](https://aws.amazon.com/config/) and [AWS Lambda](https://aws.amazon.com/lambda/).
 
