@@ -1,5 +1,5 @@
 resource "aws_config_config_rule" "r" {
-  name = "Check-IAM-PasswordPolicy"
+  name = "DD_Config_IAM_PasswordPolicy"
 
   source {
     owner             = "AWS"

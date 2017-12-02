@@ -1,4 +1,6 @@
 #
+# This Lambda function remediates violations identfied by the DD_Config_EC2_OpenPorts the DD_Config_Queue_EC2_OpenPorts_Remediation SQS queue.
+#
 # Trigger Type: Scheduled Event
 # Accepted Parameters: sqsUrl
 # Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue-name"
@@ -24,17 +26,16 @@ def receive_messages(queue):
 
 def remediate_violation(security_group, ip_permission):
     """
-    Deletes the violating security group ip_permission item detected by AWS Config
-    :param security_group: The name of the security group to operate on
-    :param ip_permission: The ip_permission object detected by AWS Config
-    :return:
+    Deletes the violating security group rules detected by AWS Config.
+    :param security_group: The groupId of the offending SecurityGroup
+    :param ip_permission: IpPermission containing violating rules to be revoked
     """
     ec2 = boto3.resource('ec2')
     sg = ec2.SecurityGroup(security_group)
 
     ip_permission = deserialize_ippermission(ip_permission)
 
-    log_message = {"action" : "RevokeSecurityGroupIngress", "securityGroupId" : security_group, "ipPermission" : ip_permission}
+    log_message = {"action" : "RevokeSecurityGroupIngress", "groupId" : security_group, "ipPermission" : ip_permission}
     print(json.dumps(log_message))
 
     try:
@@ -50,12 +51,18 @@ def remediate_violation(security_group, ip_permission):
 
 
 def upperfirst(x):
+    """
+    Capitalises the first letter only in a string.
+    :param x: The string to operate on
+    """
     return x[0].upper() + x[1:]
 
 
 def deserialize_ippermission(json_ipp):
     """
-    Deserializes an AWS ipPermission JSON object as a boto3 compatible dict.
+    Recursively deserializes an AWS IpPermission JSON object as a boto3 compatible dict.
+    :param json_ipp: A string containing the AWS Config-native representation of an IpPermission
+    :return: Returns a boto3 compatible dict representing an IpPermission
     """
     boto_ipp = {}
     if not isinstance(json_ipp, basestring):
@@ -95,8 +102,8 @@ def lambda_handler(event, context):
             break
         for msg in messages:
             body = json.loads(msg.body)
-            remediate_violation(body.get("security_group"),
-                                body.get("ip_permission"))
+            remediate_violation(body.get("groupId"),
+                                body.get("ipPermission"))
             msg.delete()
             processed += 1
 

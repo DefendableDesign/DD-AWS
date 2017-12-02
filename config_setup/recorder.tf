@@ -1,6 +1,6 @@
 #Create Recorder
 resource "aws_config_configuration_recorder" "recorder" {
-  name     = "AWSConfigRecorder"
+  name     = "DD_Config_ConfigurationRecorder"
   role_arn = "${aws_iam_role.r.arn}"
   recording_group = {
       all_supported = "true"
@@ -9,7 +9,7 @@ resource "aws_config_configuration_recorder" "recorder" {
 }
 
 resource "aws_iam_role" "r" {
-  name = "AWSConfig"
+  name = "DD_Config_Role"
 
   assume_role_policy = <<POLICY
 {
@@ -33,6 +33,3 @@ resource "aws_iam_role_policy_attachment" "a" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSConfigRole"
 }
 
-output "is_complete" {
-    value = "${aws_config_delivery_channel.delivery_channel.name}"
-}

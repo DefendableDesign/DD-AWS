@@ -1,5 +1,5 @@
 resource "aws_config_config_rule" "r" {
-  name = "Check-EC2-OpenPorts"
+  name = "DD_Config_EC2_OpenPorts"
 
   source {
     owner             = "CUSTOM_LAMBDA"

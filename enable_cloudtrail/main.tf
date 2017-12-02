@@ -1,5 +1,5 @@
 resource "aws_config_config_rule" "r" {
-  name = "Check-CloudTrail-Enabled"
+  name = "DD_Config_CloudTrail_Enabled"
 
   source {
     owner             = "AWS"

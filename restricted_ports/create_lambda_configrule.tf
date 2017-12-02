@@ -1,5 +1,5 @@
 resource "aws_iam_role" "r_configrule" {
-    name = "DD-AWSConfig-EC2ExposedPorts-Role"
+    name = "DD_Config_Role_EC2_OpenPorts"
 
     assume_role_policy = <<POLICY
 {
@@ -19,7 +19,7 @@ POLICY
 }
 
 resource "aws_iam_role_policy" "p_configrule" {
-    name = "DD-AWSConfig-EC2ExposedPorts-Policy"
+    name = "DD_Config_Policy_EC2_OpenPorts"
     role = "${aws_iam_role.r_configrule.id}"
     
     policy = <<POLICY
@@ -56,16 +56,16 @@ POLICY
 
 resource "aws_lambda_function" "lf_configrule" {
     filename         = "${data.archive_file.lambda_configrule.output_path}"
-    function_name    = "DD_AWSConfig_EC2ExposedPorts_ConfigRule"
+    function_name    = "DD_Config_Lambda_EC2_OpenPorts"
     role             = "${aws_iam_role.r_configrule.arn}"
-    handler          = "DD-AWSConfig-EC2ExposedPorts.lambda_handler"
+    handler          = "DD_Config_Lambda_EC2_OpenPorts.lambda_handler"
     source_code_hash = "${base64sha256(file("${data.archive_file.lambda_configrule.output_path}"))}"
     runtime          = "python2.7"
     timeout          = "10"
 }
 
 resource "aws_lambda_permission" "with_config" {
-    statement_id  = "DD-AWSConfig-EC2ExposedPorts-LambdaPermission"
+    statement_id  = "DD_Config_LambdaPermission_EC2_OpenPorts"
     action        = "lambda:InvokeFunction"
     function_name = "${aws_lambda_function.lf_configrule.function_name}"
     principal     = "config.amazonaws.com"

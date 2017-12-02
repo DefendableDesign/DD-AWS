@@ -1,5 +1,5 @@
 resource "aws_config_config_rule" "r" {
-  name = "Check-S3-PublicWrite"
+  name = "DD_Config_S3_PublicWrite"
 
   source {
     owner             = "AWS"

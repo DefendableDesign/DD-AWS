@@ -6,14 +6,13 @@ resource "aws_config_delivery_channel" "delivery_channel" {
 
 data "aws_caller_identity" "current" {}
 
-
 resource "aws_s3_bucket" "b" {
-  bucket        = "${data.aws_caller_identity.current.account_id}-config"
+  bucket        = "dd-config-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 }
 
 resource "aws_iam_role_policy" "p" {
-  name = "AWSConfig-S3-Policy"
+  name = "DD_Config_Policy_S3"
   role = "${aws_iam_role.r.id}"
 
   policy = <<POLICY

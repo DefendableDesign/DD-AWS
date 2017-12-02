@@ -1,3 +1,3 @@
 resource "aws_sqs_queue" "q" {
-    name = "DD_AWSConfig_EC2ExposedPorts_RemediationQueue"
+    name = "DD_Config_Queue_EC2_OpenPorts_Remediation"
 }
