@@ -61,7 +61,7 @@ resource "aws_lambda_function" "lf_remediation" {
     filename         = "${data.archive_file.lambda_remediation.output_path}"
     function_name    = "DD_Config_Lambda_EC2_OpenPorts_Remediation"
     role             = "${aws_iam_role.r_remediation.arn}"
-    handler          = "DD_Config_Lambda_EC2_OpenPorts_Remediation.lambda_handler"
+    handler          = "dd_config_lambda_ec2_openports_remediation.lambda_handler"
     source_code_hash = "${base64sha256(file("${data.archive_file.lambda_remediation.output_path}"))}"
     runtime          = "python2.7"
     timeout          = "60"
