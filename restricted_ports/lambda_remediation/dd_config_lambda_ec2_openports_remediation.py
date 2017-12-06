@@ -28,7 +28,7 @@ def receive_messages(queue):
 def remediate_violation(group_id, ip_permission):
     """
     Deletes the violating security group rules detected by AWS Config.
-    :param groupId: The groupId of the offending SecurityGroup
+    :param group_id: The groupId of the offending SecurityGroup
     :param ip_permission: IpPermission containing violating rules to be revoked
     """
     ec2 = boto3.resource('ec2')
@@ -56,7 +56,7 @@ def remediate_violation(group_id, ip_permission):
 def upperfirst(input_string):
     """
     Capitalises the first letter only in a string.
-    :param x: The string to operate on
+    :param input_string: The string to operate on
     """
     return input_string[0].upper() + input_string[1:]
 
