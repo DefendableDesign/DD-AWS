@@ -1,9 +1,10 @@
-#
-# This Lambda function remediates violations identfied by the DD_Config_EC2_OpenPorts the DD_Config_Queue_EC2_OpenPorts_Remediation SQS queue.
-#
-# Trigger Type: Scheduled Event
-# Accepted Parameters: sqsUrl
-# Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue-name"
+"""
+This Lambda function remediates violations identfied by the DD_Config_EC2_OpenPorts Config Rule.
+
+Trigger Type: Scheduled Event
+Accepted Parameters: sqsUrl
+Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue-name"
+"""
 
 import json
 import boto3
@@ -24,38 +25,40 @@ def receive_messages(queue):
     return response
 
 
-def remediate_violation(security_group, ip_permission):
+def remediate_violation(group_id, ip_permission):
     """
     Deletes the violating security group rules detected by AWS Config.
-    :param security_group: The groupId of the offending SecurityGroup
+    :param groupId: The groupId of the offending SecurityGroup
     :param ip_permission: IpPermission containing violating rules to be revoked
     """
     ec2 = boto3.resource('ec2')
-    sg = ec2.SecurityGroup(security_group)
+    sec_grp = ec2.SecurityGroup(group_id)
 
     ip_permission = deserialize_ippermission(ip_permission)
 
-    log_message = {"action" : "RevokeSecurityGroupIngress", "groupId" : security_group, "ipPermission" : ip_permission}
-    print(json.dumps(log_message))
+    log_message = {"action": "RevokeSecurityGroupIngress",
+                   "groupId": group_id, "ipPermission": ip_permission}
+    print json.dumps(log_message)
 
     try:
-        response = sg.revoke_ingress(
+        sec_grp.revoke_ingress(
             IpPermissions=[ip_permission],
             DryRun=False
         )
-    except botocore.exceptions.ClientError as e:
-        if e.response.get("Error", {}).get("Code") == "InvalidPermission.NotFound":
-            pass # If the offending security group entry no longer exists, do nothing.
+    except botocore.exceptions.ClientError as client_error:
+        if client_error.response.get("Error", {}).get("Code") == "InvalidPermission.NotFound":
+            # If the offending security group entry no longer exists, do nothing.
+            pass
         else:
-            raise e
+            raise client_error
 
 
-def upperfirst(x):
+def upperfirst(input_string):
     """
     Capitalises the first letter only in a string.
     :param x: The string to operate on
     """
-    return x[0].upper() + x[1:]
+    return input_string[0].upper() + input_string[1:]
 
 
 def deserialize_ippermission(json_ipp):
@@ -66,29 +69,34 @@ def deserialize_ippermission(json_ipp):
     """
     boto_ipp = {}
     if not isinstance(json_ipp, basestring):
-        for k in json_ipp:
-            v = json_ipp[k]
-            if type(v) is list:
-                nv = []
-                for li in v:
-                    nv.append(deserialize_ippermission(li))
-            elif type(v) is dict:
-                nv = deserialize_ippermission(v)
+        for key in json_ipp:
+            val = json_ipp[key]
+            if isinstance(val, list):
+                new_val = []
+                for list_item in val:
+                    new_val.append(deserialize_ippermission(list_item))
+            elif isinstance(val, dict):
+                new_val = deserialize_ippermission(val)
             else:
-                nv = v
+                new_val = val
 
-            if k == "ipv4Ranges":
-                boto_ipp["IpRanges"] = nv
-            elif k == "ipRanges":
+            if key == "ipv4Ranges":
+                boto_ipp["IpRanges"] = new_val
+            elif key == "ipRanges":
                 pass
             else:
-                boto_ipp[upperfirst(k)] = nv
+                boto_ipp[upperfirst(key)] = new_val
         return boto_ipp
-    else:
-        return json_ipp
+
+    return json_ipp
 
 
 def lambda_handler(event, context):
+    """
+    Lambda Function handler
+    """
+    #pylint: disable=unused-argument
+
     sqs_url = event["sqsUrl"]
     sqs = boto3.resource("sqs")
     queue = sqs.Queue(sqs_url)
@@ -98,7 +106,7 @@ def lambda_handler(event, context):
     while True:
         messages = receive_messages(queue)
 
-        if len(messages) == 0:
+        if not messages:
             break
         for msg in messages:
             body = json.loads(msg.body)
@@ -107,7 +115,8 @@ def lambda_handler(event, context):
             msg.delete()
             processed += 1
 
-    log_message = {"action" : "RemediationComplete", "messagesProcessed" : processed}
-    print(json.dumps(log_message))
+    log_message = {"action": "RemediationComplete",
+                   "messagesProcessed": processed}
+    print json.dumps(log_message)
 
     return True
