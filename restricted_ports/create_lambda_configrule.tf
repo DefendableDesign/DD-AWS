@@ -58,7 +58,7 @@ resource "aws_lambda_function" "lf_configrule" {
     filename         = "${data.archive_file.lambda_configrule.output_path}"
     function_name    = "DD_Config_Lambda_EC2_OpenPorts"
     role             = "${aws_iam_role.r_configrule.arn}"
-    handler          = "DD_Config_Lambda_EC2_OpenPorts.lambda_handler"
+    handler          = "dd_config_lambda_ec2_openports.lambda_handler"
     source_code_hash = "${base64sha256(file("${data.archive_file.lambda_configrule.output_path}"))}"
     runtime          = "python2.7"
     timeout          = "10"

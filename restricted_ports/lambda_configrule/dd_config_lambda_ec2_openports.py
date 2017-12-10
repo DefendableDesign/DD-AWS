@@ -1,14 +1,18 @@
-#
-# Adapted from https://github.com/awslabs/aws-config-rules/blob/master/python/ec2-exposed-group.py
-#
-# This AWS Config Rule raises NOT_COMPLIANT for Security Groups that expose prohibited ports to the internet.
-# Supplying an optional SQS Url will queue events for remediation by the DD_Config_Lambda_EC2_OpenPorts_Remediation Lambda function.
-#
-# Trigger Type: Change Triggered
-# Scope of Changes: EC2:SecurityGroup
-# Accepted Parameters: sqsUrl [OPTIONAL], prohibitedPorts
-# Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue-name", prohibitedPorts:"22,3389,3306"
+"""
+Adapted from https://github.com/awslabs/aws-config-rules/blob/master/python/ec2-exposed-group.py
 
+This AWS Config Rule raises NOT_COMPLIANT for Security Groups that expose prohibited ports to the
+internet.
+Supplying an optional SQS Url will queue events for remediation by the
+DD_Config_Lambda_EC2_OpenPorts_Remediation Lambda function.
+
+Trigger Type: Change Triggered
+Scope of Changes: EC2:SecurityGroup
+Accepted Parameters: sqsUrl [OPTIONAL], prohibitedPorts
+Example Value:
+    sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue-name",
+    prohibitedPorts:"22,3389,3306"
+"""
 
 import json
 import boto3
@@ -24,8 +28,8 @@ def find_violations(ip_permissions, prohibited_ports):
     :param prohibited_ports: list of prohibited ports
     :return: Returns list of violating IpPermission objects
     '''
-    violations = []
-    violations_permissions = []
+    invalid_ports = []
+    invalid_ip_permissions = []
 
     for ip_permission in ip_permissions or []:
         exposed_ports = []
@@ -38,10 +42,10 @@ def find_violations(ip_permissions, prohibited_ports):
 
         for port in prohibited_ports:
             if port in exposed_ports:
-                violations.append(port)
-                violations_permissions.append(strip_valid_cidrs(ip_permission))
+                invalid_ports.append(port)
+                invalid_ip_permissions.append(strip_valid_cidrs(ip_permission))
 
-    return violations, violations_permissions
+    return invalid_ports, invalid_ip_permissions
 
 
 def has_invalid_cidrs(ip_permission):
@@ -51,16 +55,16 @@ def has_invalid_cidrs(ip_permission):
     :param ip_permission: IpPermission object
     :return: bool True if invalid CIDRs found
     '''
-    for range in ip_permission["ipv4Ranges"]:
-        if range["cidrIp"] == "0.0.0.0/0":
+    for ip_range in ip_permission["ipv4Ranges"]:
+        if ip_range["cidrIp"] == "0.0.0.0/0":
             return True
 
-    for range in ip_permission["ipv6Ranges"]:
-        if range["cidrIpv6"] == "::/0":
+    for ip_range in ip_permission["ipv6Ranges"]:
+        if ip_range["cidrIpv6"] == "::/0":
             return True
 
-    for range in ip_permission["ipRanges"]:
-        if range == "0.0.0.0/0":
+    for ip_range in ip_permission["ipRanges"]:
+        if ip_range == "0.0.0.0/0":
             return True
 
     return False
@@ -68,7 +72,7 @@ def has_invalid_cidrs(ip_permission):
 
 def strip_valid_cidrs(ip_permission):
     '''
-    Removes any ranges from the IpPermission that are not 0.0.0.0/0 or ::/0 as 
+    Removes any ranges from the IpPermission that are not 0.0.0.0/0 or ::/0 as
     these are not violations and should be ignored.
 
     :param ip_permission: IpPermission object
@@ -78,19 +82,19 @@ def strip_valid_cidrs(ip_permission):
     new_ipv6ranges = []
     new_ranges = []
 
-    for range in ip_permission["ipv4Ranges"]:
-        if range["cidrIp"] == "0.0.0.0/0":
-            new_ipv4ranges.append(range)
+    for ip_range in ip_permission["ipv4Ranges"]:
+        if ip_range["cidrIp"] == "0.0.0.0/0":
+            new_ipv4ranges.append(ip_range)
     ip_permission["ipv4Ranges"] = new_ipv4ranges
 
-    for range in ip_permission["ipv6Ranges"]:
-        if range["cidrIpv6"] == "::/0":
-            new_ipv6ranges.append(range)
+    for ip_range in ip_permission["ipv6Ranges"]:
+        if ip_range["cidrIpv6"] == "::/0":
+            new_ipv6ranges.append(ip_range)
     ip_permission["ipv6Ranges"] = new_ipv6ranges
 
-    for range in ip_permission["ipRanges"]:
-        if range == "0.0.0.0/0":
-            new_ranges.append(range)
+    for ip_range in ip_permission["ipRanges"]:
+        if ip_range == "0.0.0.0/0":
+            new_ranges.append(ip_range)
     ip_permission["ipRanges"] = new_ranges
 
     return ip_permission
@@ -108,7 +112,7 @@ def evaluate_compliance(configuration_item, prohibited_ports):
         return {
             "compliance_type": "NOT_APPLICABLE",
             "annotation": "The rule doesn't apply to resources of type " +
-            configuration_item["resourceType"] + "."
+                          configuration_item["resourceType"] + "."
         }
 
     violations = find_violations(
@@ -116,7 +120,8 @@ def evaluate_compliance(configuration_item, prohibited_ports):
         prohibited_ports
     )
 
-    if len(violations[0]) > 0:
+    violation_count = len(violations[0])
+    if violation_count > 0:
         annotation = "A forbidden port ({0}) is exposed to the internet.".format(
             ', '.join(str(x) for x in violations[0]))
         return {
@@ -141,12 +146,17 @@ def queue_violation(sqs_url, sg_id, ip_permission):
     sqs = boto3.resource("sqs")
     queue = sqs.Queue(sqs_url)
     message = {"groupId": sg_id, "ipPermission": ip_permission}
-    response = queue.send_message(
+    queue.send_message(
         MessageBody=json.dumps(message)
     )
 
 
 def lambda_handler(event, context):
+    """
+    Lambda Function handler
+    """
+    #pylint: disable=unused-argument
+
     invoking_event = json.loads(event["invokingEvent"])
     configuration_item = invoking_event["configurationItem"]
     rule_parameters = json.loads(event["ruleParameters"])
@@ -163,9 +173,10 @@ def lambda_handler(event, context):
 
     if sqs_url:
         if "violations" in evaluation:
-            for v in evaluation["violations"][1]:
+            invalid_ip_permissions = evaluation["violations"][1]
+            for ip_permission in invalid_ip_permissions:
                 queue_violation(
-                    sqs_url, configuration_item["configuration"].get("groupId"), v)
+                    sqs_url, configuration_item["configuration"].get("groupId"), ip_permission)
 
     config = boto3.client("config")
     config.put_evaluations(
@@ -196,4 +207,4 @@ def lambda_handler(event, context):
         "evaluationResult":
             evaluation
     }
-    print(json.dumps(log_message))
+    print json.dumps(log_message)
