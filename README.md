@@ -10,16 +10,15 @@ The Terraform code:
 
 # How to get started
 1. Install [Terraform](https://www.terraform.io/downloads.html)
-2. Download and unpack the [latest release](https://github.com/DefendableDesign/DD-AWS/releases), or clone the whole repo.
-3. [Configure AWS credentials](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
-4. Set a region (defaults to Sydney):
-    - Edit `main.tf` to set an explicit `region` (refer to [AWS documentation for supported regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#awsconfig_region))
-4. **[Optional]** Enable auto-response for the `restricted_ports` module:
-    - Edit `main.tf` and change `enable_auto_response` from `"false"` to `"true"`
-5. Prepare Terraform:
-    - `terraform init`
-    - `terraform get`
+1. Download and unpack the [latest release](https://github.com/DefendableDesign/DD-AWS/releases), or clone the whole repo.
+1. [Configure AWS credentials](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
+1. **[Optional]** Enable auto-response for remediating violations:
+    - Edit `terraform.tfvars` and change `enable_auto_response` from `"false"` to `"true"`
+1. Set a region (defaults to Sydney):
+    - Edit `terraform.tfvars` and change `region` to your preferred AWS region (refer to [AWS documentation for supported regions](http://docs.aws.amazon.com/general/latest/gr/rande.html#awsconfig_region))
+1. Run `./setup_remote_tfstate.ps1` to create an S3 bucket for storing your Terraform state
+1. Check the Terraform plan:
     - `terraform plan`
         - Check the output of terraform plan to see what changes will be made to your AWS account.
-6. Go live:
+1. Go live:
     - `terraform apply`
