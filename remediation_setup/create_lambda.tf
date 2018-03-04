@@ -65,7 +65,7 @@ resource "aws_lambda_function" "lf_remediation_coordinator" {
     handler          = "dd_config_lambda_remediation_coordinator.lambda_handler"
     source_code_hash = "${base64sha256(file("${data.archive_file.lambda_remediation_coordinator.output_path}"))}"
     runtime          = "python2.7"
-    timeout          = "10"
+    timeout          = "60"
 }
 
 resource "aws_lambda_permission" "with_config" {

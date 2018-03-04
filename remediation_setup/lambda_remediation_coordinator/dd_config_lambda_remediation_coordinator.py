@@ -26,6 +26,7 @@ def receive_messages(queue):
         AttributeNames=['All'],
         MessageAttributeNames=['All'],
         MaxNumberOfMessages=10,
+        VisibilityTimeout=180,
         WaitTimeSeconds=3,
     )
     return response
@@ -75,17 +76,18 @@ def lambda_handler(event, context):
 
     processed = 0
 
-    messages = receive_messages(queue)
+    while True:
+        messages = receive_messages(queue)
 
-    if messages:
+        if not messages:
+            break
         for msg in messages:
             body = json.loads(msg.body)
             receipt_handle = msg.receipt_handle
             call_remediation_handler(sqs_url, receipt_handle, body)
             processed += 1
 
-    log_message = {"action": "RemediationComplete",
-                   "messagesProcessed": processed}
+    log_message = {"action": "RemediationTriggered", "messagesProcessed": processed}
     print json.dumps(log_message)
 
     return True

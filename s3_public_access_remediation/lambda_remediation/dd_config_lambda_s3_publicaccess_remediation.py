@@ -31,15 +31,29 @@ def remediate_violation_acl(bucket_name):
         'Grants': grants,
         'Owner': bucket_acl.owner
     }
-
-    response = bucket_acl.put(
-        AccessControlPolicy = acp
-    )
-
-    log_message = {"action": "PutBucketAcl",
-                   "bucketName": bucket_name, "accessControlPolicy": json.dumps(acp)}
-
-    print json.dumps(log_message)
+    try:
+        response = bucket_acl.put(
+            AccessControlPolicy = acp
+        )
+        log_message = {"action": "PutBucketAcl", "bucketName": bucket_name, "accessControlPolicy": json.dumps(acp)}
+        print json.dumps(log_message)
+        return True
+    except botocore.exceptions.ClientError as client_error:
+        if client_error.response['Error']['Code'] == 'OperationAborted':
+            log_message = {
+                "action": "OperationAborted", 
+                "attemptedAction": "PutBucketAcl", 
+                "bucketName": bucket_name, 
+                "message": "{0}".format(client_error.response['Error']['Message'])}
+            print json.dumps(log_message)
+        else:
+            log_message = {
+                "action": "Error", 
+                "attemptedAction": "PutBucketAcl", 
+                "bucketName": bucket_name, 
+                "accessControlPolicy": "Unexpected error: {0}".format(client_error)}
+            print json.dumps(log_message)
+        return False
 
 
 def remediate_violation_policy(bucket_name):
@@ -58,16 +72,30 @@ def remediate_violation_policy(bucket_name):
             if statement["Principal"] == "*":
                 print("Identified * Principal in Allow statement, removing statement.")
                 policy["Statement"].remove(statement)
-                
-    response = bucket_policy.put(
-        ConfirmRemoveSelfBucketAccess=False,
-        Policy = json.dumps(policy)
-    )
-
-    log_message = {"action": "PutBucketPolicy",
-                   "bucketName": bucket_name, "bucketPolicy": json.dumps(policy)}
-
-    print json.dumps(log_message)
+    try:            
+        response = bucket_policy.put(
+            ConfirmRemoveSelfBucketAccess=False,
+            Policy = json.dumps(policy)
+        )
+        log_message = {"action": "PutBucketPolicy", "bucketName": bucket_name, "bucketPolicy": json.dumps(policy)}
+        print json.dumps(log_message)
+    except botocore.exceptions.ClientError as client_error:
+        if client_error.response['Error']['Code'] == 'OperationAborted':
+            log_message = {
+                "action": "OperationAborted", 
+                "attemptedAction": "PutBucketPolicy", 
+                "bucketName": bucket_name, 
+                "message": "{0}".format(client_error.response['Error']['Message'])}
+            print json.dumps(log_message)
+        else:
+            log_message = {
+                "action": "Error", 
+                "attemptedAction": "PutBucketPolicy", 
+                "bucketName": bucket_name, 
+                "accessControlPolicy": "Unexpected error: {0}".format(client_error)}
+            print json.dumps(log_message)
+        return False
+    return True
 
 
 def dequeue_message(sqs_url, receipt_handle):
@@ -76,8 +104,9 @@ def dequeue_message(sqs_url, receipt_handle):
     :param sqs_url: The url for the SQS queue
     :param receipt_handle: The ReceiptHandle for the SQS message to delete
     """
-    sqs = boto3.resource("sqs")
-    sqs.delete_message(
+    client = boto3.client('sqs')
+
+    client.delete_message(
         QueueUrl=sqs_url,
         ReceiptHandle=receipt_handle
     )
@@ -93,16 +122,15 @@ def lambda_handler(event, context):
     receipt_handle = event["receiptHandle"]
     body = event["messageBody"]
     bucket_name = body["targetResourceId"]
-    violation_type = body["violation_type"]
+    violation_type = body["violationType"]
 
+    success = False
     if violation_type == "S3_BUCKET_PUBLIC_ACL":
-        remediate_violation_acl(bucket_name)
+        success = remediate_violation_acl(bucket_name)
     elif violation_type == "S3_BUCKET_PUBLIC_POLICY":
-        remediate_violation_policy(bucket_name)
+        success = remediate_violation_policy(bucket_name)
 
-    dequeue_message(sqs_url, receipt_handle)
-
-    log_message = {"action": "RemediationComplete", "bucketName": bucket_name}
-    print json.dumps(log_message)
-
+    if success:
+        dequeue_message(sqs_url, receipt_handle)
+    
     return True

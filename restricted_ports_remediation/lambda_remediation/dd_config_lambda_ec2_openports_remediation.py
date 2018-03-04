@@ -31,11 +31,23 @@ def remediate_violation(group_id, ip_permission):
             DryRun=False
         )
     except botocore.exceptions.ClientError as client_error:
-        if client_error.response.get("Error", {}).get("Code") == "InvalidPermission.NotFound":
+        if client_error.response['Error']['Code'] == 'InvalidPermission.NotFound':
             # If the offending security group entry no longer exists, do nothing.
-            pass
+            log_message = {
+                "action": "OperationAborted", 
+                "attemptedAction": "RevokeSecurityGroupIngress", 
+                "groupId": group_id, 
+                "message": "The offending security group no longer exists."}
+            print json.dumps(log_message)
         else:
-            raise client_error
+            log_message = {
+                "action": "Error", 
+                "attemptedAction": "RevokeSecurityGroupIngress", 
+                "groupId": group_id, 
+                "accessControlPolicy": "Unexpected error: {0}".format(client_error)}
+            print json.dumps(log_message)
+            return False
+    return True
 
 
 def dequeue_message(sqs_url, receipt_handle):
@@ -102,11 +114,10 @@ def lambda_handler(event, context):
     group_id = body["targetResourceId"]
     ip_permission = body["violationDetails"]
 
-    remediate_violation(group_id, ip_permission)
+    success = False
+    success = remediate_violation(group_id, ip_permission)
 
-    dequeue_message(sqs_url, receipt_handle)
-
-    log_message = {"action": "RemediationComplete", "groupId": group_id}
-    print json.dumps(log_message)
+    if success:
+        dequeue_message(sqs_url, receipt_handle)
 
     return True

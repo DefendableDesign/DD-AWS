@@ -2,7 +2,7 @@ resource "aws_cloudwatch_event_rule" "trigger_remediation" {
   name        = "DD_Config_EventRule_Remediation_Coordinator"
   description = "Periodically triggers the DD_Config_Remediation_Coordinator process."
   is_enabled  = "${var.enable_auto_response}"
-  schedule_expression = "rate(5 minutes)"
+  schedule_expression = "rate(1 minute)"
 }
 
 resource "aws_cloudwatch_event_target" "lf" {
