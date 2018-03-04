@@ -5,25 +5,10 @@ Trigger Type: Scheduled Event
 Accepted Parameters: sqsUrl
 Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue-name"
 """
-
+#pylint: disable=print-statement
 import json
 import boto3
 import botocore
-
-def receive_messages(queue):
-    """
-    Receives messages from an SQS Queue.
-    :param queue: boto3 SQS Queue
-    :return: messages
-    """
-    response = queue.receive_messages(
-        AttributeNames=['All'],
-        MessageAttributeNames=['All'],
-        MaxNumberOfMessages=5,
-        WaitTimeSeconds=3,
-    )
-    return response
-
 
 def remediate_violation(group_id, ip_permission):
     """
@@ -51,6 +36,20 @@ def remediate_violation(group_id, ip_permission):
             pass
         else:
             raise client_error
+
+
+def dequeue_message(sqs_url, receipt_handle):
+    """
+    Deletes a message from the specified SQS queue.
+    :param sqs_url: The url for the SQS queue
+    :param receipt_handle: The ReceiptHandle for the SQS message to delete
+    """
+    client = boto3.client('sqs')
+
+    client.delete_message(
+        QueueUrl=sqs_url,
+        ReceiptHandle=receipt_handle
+    )
 
 
 def upperfirst(input_string):
@@ -98,25 +97,16 @@ def lambda_handler(event, context):
     #pylint: disable=unused-argument
 
     sqs_url = event["sqsUrl"]
-    sqs = boto3.resource("sqs")
-    queue = sqs.Queue(sqs_url)
+    receipt_handle = event["receiptHandle"]
+    body = event["messageBody"]
+    group_id = body["targetResourceId"]
+    ip_permission = body["violationDetails"]
 
-    processed = 0
+    remediate_violation(group_id, ip_permission)
 
-    while True:
-        messages = receive_messages(queue)
+    dequeue_message(sqs_url, receipt_handle)
 
-        if not messages:
-            break
-        for msg in messages:
-            body = json.loads(msg.body)
-            remediate_violation(body.get("groupId"),
-                                body.get("ipPermission"))
-            msg.delete()
-            processed += 1
-
-    log_message = {"action": "RemediationComplete",
-                   "messagesProcessed": processed}
+    log_message = {"action": "RemediationComplete", "groupId": group_id}
     print json.dumps(log_message)
 
     return True

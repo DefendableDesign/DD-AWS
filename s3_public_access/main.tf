@@ -1,5 +1,5 @@
 resource "aws_config_config_rule" "r" {
-  name = "DD_Config_EC2_OpenPorts"
+  name = "DD_Config_S3_PublicAccess"
 
   source {
     owner             = "CUSTOM_LAMBDA"
@@ -10,13 +10,13 @@ resource "aws_config_config_rule" "r" {
   }
 
   scope {
-    compliance_resource_types = ["AWS::EC2::SecurityGroup"]
+    compliance_resource_types = ["AWS::S3::Bucket"]
   }
 
   input_parameters = <<JSON
 {
     "sqsUrl":"${var.remediation_queue_url}",
-    "prohibitedPorts":"${var.prohibited_ports}"
+    "bucketWhitelist":""
 }
 JSON
 

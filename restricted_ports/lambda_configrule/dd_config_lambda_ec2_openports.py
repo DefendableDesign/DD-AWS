@@ -29,7 +29,7 @@ def find_violations(ip_permissions, prohibited_ports):
     :return: Returns list of violating IpPermission objects
     '''
     invalid_ports = []
-    invalid_ip_permissions = []
+    violations = []
 
     for ip_permission in ip_permissions or []:
         exposed_ports = []
@@ -43,9 +43,13 @@ def find_violations(ip_permissions, prohibited_ports):
         for port in prohibited_ports:
             if port in exposed_ports:
                 invalid_ports.append(port)
-                invalid_ip_permissions.append(strip_valid_cidrs(ip_permission))
+                violation = {
+                    "violation_type": "EC2_SG_PROHIBITED_PORT",
+                    "details": strip_valid_cidrs(ip_permission)
+                }
+                violations.append(violation)
 
-    return invalid_ports, invalid_ip_permissions
+    return invalid_ports, violations
 
 
 def has_invalid_cidrs(ip_permission):
@@ -135,7 +139,7 @@ def evaluate_compliance(configuration_item, prohibited_ports):
     }
 
 
-def queue_violation(sqs_url, sg_id, ip_permission):
+def queue_violation(sqs_url, rule_name, configuration_item, violation):
     '''
     Writes a violation to the DD remediation queue.
 
@@ -145,7 +149,17 @@ def queue_violation(sqs_url, sg_id, ip_permission):
     '''
     sqs = boto3.resource("sqs")
     queue = sqs.Queue(sqs_url)
-    message = {"groupId": sg_id, "ipPermission": ip_permission}
+
+
+    message = {
+        "raisedByRule": rule_name,
+        "targetResourceType": configuration_item["resourceType"],
+        "targetResourceId": configuration_item["resourceId"],
+        "awsRegion": configuration_item["awsRegion"],
+        "violationType": violation["violation_type"],
+        "violationDetails": violation["details"]
+        }
+
     queue.send_message(
         MessageBody=json.dumps(message)
     )
@@ -156,9 +170,11 @@ def lambda_handler(event, context):
     Lambda Function handler
     """
     #pylint: disable=unused-argument
+    #pylint: disable=print-statement
 
     invoking_event = json.loads(event["invokingEvent"])
     configuration_item = invoking_event["configurationItem"]
+    rule_name = event["configRuleName"]
     rule_parameters = json.loads(event["ruleParameters"])
 
     prohibited_ports = [int(x.strip())
@@ -173,10 +189,9 @@ def lambda_handler(event, context):
 
     if sqs_url:
         if "violations" in evaluation:
-            invalid_ip_permissions = evaluation["violations"][1]
-            for ip_permission in invalid_ip_permissions:
-                queue_violation(
-                    sqs_url, configuration_item["configuration"].get("groupId"), ip_permission)
+            violations = evaluation["violations"][1]
+            for violation in violations:
+                queue_violation(sqs_url, rule_name, configuration_item, violation)
 
     config = boto3.client("config")
     config.put_evaluations(
