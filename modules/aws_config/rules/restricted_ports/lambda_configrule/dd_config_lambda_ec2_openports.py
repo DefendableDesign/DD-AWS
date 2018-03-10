@@ -33,6 +33,7 @@ def find_violations(ip_permissions, prohibited_ports):
 
     for ip_permission in ip_permissions or []:
         exposed_ports = []
+        ip_permission = strip_valid_cidrs(ip_permission)
         if has_invalid_cidrs(ip_permission):
             if "fromPort" in ip_permission:
                 exposed_ports.extend(
@@ -40,12 +41,14 @@ def find_violations(ip_permissions, prohibited_ports):
             else:
                 exposed_ports.extend(range(0, 65535 + 1))
 
-        for port in prohibited_ports:
-            if port in exposed_ports:
-                invalid_ports.append(port)
+            for port in prohibited_ports:
+                if port in exposed_ports:
+                    invalid_ports.append(port)
+            
+            if len(invalid_ports) > 0:
                 violation = {
                     "violation_type": "EC2_SG_PROHIBITED_PORT",
-                    "details": strip_valid_cidrs(ip_permission)
+                    "details": ip_permission
                 }
                 violations.append(violation)
 
