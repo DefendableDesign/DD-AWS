@@ -1,3 +1,6 @@
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 resource "aws_iam_role" "r_remediation" {
   name = "DD_Config_Role_S3_PublicAccess_Remediation"
 
@@ -52,6 +55,13 @@ resource "aws_iam_role_policy" "p_remediation" {
             "Resource": [
                 "*"
             ]
+        },
+        {
+            "Action": [
+                "lambda:InvokeFunction"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:DD_Config_Lambda_Notifier"
         }
     ]
 }
@@ -66,13 +76,11 @@ resource "aws_lambda_function" "lf_remediation" {
   source_code_hash = "${base64sha256(file("${data.archive_file.lambda_remediation.output_path}"))}"
   runtime          = "python2.7"
   timeout          = "60"
+
+  environment {
+    variables = {
+      notifierFnName  = "DD_Config_Lambda_Notifier"
+      notifierEnabled = "${var.notifier_enabled}"
+    }
+  }
 }
-
-/*resource "aws_lambda_permission" "coordinator_invoke_permission" {
-    statement_id  = "DD_Config_LambdaPermission_S3_PublicAccess_Remediation"
-    action        = "lambda:InvokeFunction"
-    function_name = "${aws_lambda_function.lf_remediation.function_name}"
-    principal     = "lambda.amazonaws.com"
-    source_arn    = "${var.remediation_coordinator_lambda_arn}"
-}*/
-

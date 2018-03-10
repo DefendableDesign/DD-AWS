@@ -22,6 +22,7 @@ module "restricted_ports_remediation" {
   remediation_queue_url              = "${var.remediation_queue_url}"
   remediation_queue_arn              = "${var.remediation_queue_arn}"
   remediation_coordinator_lambda_arn = "${var.remediation_coordinator_lambda_arn}"
+  notifier_enabled                   = "${var.notifier_enabled}"
 }
 
 module "s3_public_access" {
@@ -37,4 +38,5 @@ module "s3_public_access_remediation" {
   remediation_queue_url              = "${var.remediation_queue_url}"
   remediation_queue_arn              = "${var.remediation_queue_arn}"
   remediation_coordinator_lambda_arn = "${var.remediation_coordinator_lambda_arn}"
+  notifier_enabled                   = "${var.notifier_enabled}"
 }

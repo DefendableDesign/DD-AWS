@@ -9,6 +9,11 @@ Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue
 import json
 import boto3
 import botocore
+import os
+import datetime
+
+NOTIFIER_ENABLED = os.environ["notifierEnabled"]
+NOTIFIER_FUNCTION = os.environ["notifierFnName"]
 
 def remediate_violation_acl(bucket_name):
     """
@@ -37,7 +42,6 @@ def remediate_violation_acl(bucket_name):
         )
         log_message = {"action": "PutBucketAcl", "bucketName": bucket_name, "accessControlPolicy": json.dumps(acp)}
         print json.dumps(log_message)
-        return True
     except botocore.exceptions.ClientError as client_error:
         if client_error.response['Error']['Code'] == 'OperationAborted':
             log_message = {
@@ -53,7 +57,8 @@ def remediate_violation_acl(bucket_name):
                 "bucketName": bucket_name, 
                 "accessControlPolicy": "Unexpected error: {0}".format(client_error)}
             print json.dumps(log_message)
-        return False
+        return False, log_message
+    return True, log_message
 
 
 def remediate_violation_policy(bucket_name):
@@ -94,7 +99,47 @@ def remediate_violation_policy(bucket_name):
                 "bucketName": bucket_name, 
                 "accessControlPolicy": "Unexpected error: {0}".format(client_error)}
             print json.dumps(log_message)
-        return False
+        return False, log_message
+    return True, log_message
+
+
+def notify(log_message, source, account_id):
+    """
+    Calls the Notifier Lambda function to notify slack that action has been taken.
+    :param log_message: The log message string
+    """
+    #pylint: disable=unused-variable
+    lambda_client = boto3.client('lambda')
+
+    message = ""
+    if log_message["action"] == "PutBucketPolicy":
+        template = "A \"*\" Principal in an Allow policy statement was fixed by applying an updated bucket policy to {0}:\n```\n{1}\n```"
+        bucket_policy = json.loads(log_message["bucketPolicy"])
+        bucket_policy = json.dumps(bucket_policy, indent=4, sort_keys=True)
+        message = template.format(log_message["bucketName"], bucket_policy)
+    elif log_message["action"] == "PutBucketAcl":
+        template = "An AllUsers or AllAuthenticatedUsers grant was fixed by applying an updated access control policy to {0}:\n```\n{1}\n```"
+        acp = json.loads(log_message["accessControlPolicy"])
+        acp = json.dumps(acp, indent=4, sort_keys=True)
+        message = template.format(log_message["bucketName"], acp)
+
+    payload = {
+        "remediationSource" : source,
+        "resourceId" : log_message["bucketName"],
+        "resourceType" : "AWS::S3::Bucket",
+        "action" : log_message["action"],
+        "actionCompleteTime" : datetime.datetime.utcnow().isoformat() + "+00:00",
+        "awsAccountId" : account_id,
+        "message" : message
+    }
+
+    payload_bytes = json.dumps(payload).encode('utf-8')
+
+    invoke_response = lambda_client.invoke(
+        FunctionName=NOTIFIER_FUNCTION,
+        InvocationType='Event',
+        Payload=payload_bytes
+    )
     return True
 
 
@@ -126,11 +171,19 @@ def lambda_handler(event, context):
 
     success = False
     if violation_type == "S3_BUCKET_PUBLIC_ACL":
-        success = remediate_violation_acl(bucket_name)
+        result = remediate_violation_acl(bucket_name)
     elif violation_type == "S3_BUCKET_PUBLIC_POLICY":
-        success = remediate_violation_policy(bucket_name)
+        result = remediate_violation_policy(bucket_name)
+
+    success = result[0]
+    message = result[1]
 
     if success:
         dequeue_message(sqs_url, receipt_handle)
-    
+        if NOTIFIER_ENABLED == "true":
+            if (message["action"] == "PutBucketPolicy" or message["action"] == "PutBucketAcl"):
+                fn_name = context.function_name
+                account_id = context.invoked_function_arn.split(":")[4]
+                notify(message, fn_name, account_id)
+
     return True

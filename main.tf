@@ -27,7 +27,6 @@ module "config" {
 module "remediation" {
   source               = "./modules/aws_config/remediation_coordinator"
   enable_auto_response = "${var.enable_auto_response}"
-  region               = "${var.region}"
 }
 
 module "rules" {
@@ -36,4 +35,15 @@ module "rules" {
   remediation_queue_url              = "${module.remediation.remediation_queue_url}"
   remediation_queue_arn              = "${module.remediation.remediation_queue_arn}"
   remediation_coordinator_lambda_arn = "${module.remediation.remediation_coordinator_lambda_arn}"
+  notifier_enabled                   = "${var.slack_webhook_url == "" ? "false" : "true"}"
+}
+
+module "notifier" {
+  source             = "./modules/notifier"
+  slack_webhook_url  = "${var.slack_webhook_url}"
+  slack_channel      = "${var.slack_channel}"
+  kms_key_id         = "${module.kms.kms_key_id}"
+  kms_arn            = "${module.kms.kms_arn}"
+  monitoring_sns_arn = "${module.best_practice.sns_topic_arn}"
+  config_sns_arn     = "${module.config.sns_topic_arn}"
 }
