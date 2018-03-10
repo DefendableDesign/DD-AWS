@@ -67,10 +67,10 @@ resource "aws_lambda_function" "lf_remediation" {
     timeout          = "60"
 }
 
-resource "aws_lambda_permission" "coordinator_invoke_permission" {
+/*resource "aws_lambda_permission" "coordinator_invoke_permission" {
     statement_id  = "DD_Config_LambdaPermission_EC2_OpenPorts_Remediation"
     action        = "lambda:InvokeFunction"
     function_name = "${aws_lambda_function.lf_remediation.function_name}"
     principal     = "lambda.amazonaws.com"
     source_arn    = "${var.remediation_coordinator_lambda_arn}"
-}
+}*/

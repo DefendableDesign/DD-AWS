@@ -12,9 +12,9 @@ resource "aws_config_config_rule" "r" {
     "RequireLowercaseCharacters":"true",
     "RequireSymbols":"true",
     "RequireNumbers":"true",
-    "MinimumPasswordLength":"10",
-    "PasswordReusePrevention":"12",
-    "MaxPasswordAge":"30"
+    "MinimumPasswordLength":"14",
+    "PasswordReusePrevention":"24",
+    "MaxPasswordAge":"90"
 }
 JSON
 
