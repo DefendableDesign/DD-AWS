@@ -9,6 +9,11 @@ Example Value: sqsUrl:"https://sqs.ap-southeast-2.amazonaws.com/0123456789/queue
 import json
 import boto3
 import botocore
+import os
+import datetime
+
+NOTIFIER_ENABLED = os.environ["notifierEnabled"]
+NOTIFIER_FUNCTION = os.environ["notifierFnName"]
 
 def remediate_violation(group_id, ip_permission):
     """
@@ -46,9 +51,37 @@ def remediate_violation(group_id, ip_permission):
                 "groupId": group_id, 
                 "accessControlPolicy": "Unexpected error: {0}".format(client_error)}
             print json.dumps(log_message)
-            return False
-    return True
+            return False, log_message
+    return True, log_message
 
+def notify(log_message, source, account_id):
+    """
+    Calls the Notifier Lambda function to notify slack that action has been taken.
+    :param log_message: The log message string
+    """
+    #pylint: disable=unused-variable
+    print("Running notifier: {0}".format(NOTIFIER_FUNCTION))
+    lambda_client = boto3.client('lambda')
+
+    payload = {
+        "remediationSource" : source,
+        "resourceId" : log_message["groupId"],
+        "resourceType" : "AWS::EC2::SecurityGroup",
+        "action" : log_message["action"],
+        "actionCompleteTime" : datetime.datetime.utcnow().isoformat() + "+00:00",
+        "awsAccountId" : account_id,
+        "message" : "The following entry was removed from {0}:\n```\n{1}\n```".format(log_message["groupId"], json.dumps(log_message["ipPermission"], indent=4, sort_keys=True))
+    }
+
+    payload_bytes = json.dumps(payload).encode('utf-8')
+
+    invoke_response = lambda_client.invoke(
+        FunctionName=NOTIFIER_FUNCTION,
+        InvocationType='Event',
+        Payload=payload_bytes
+    )
+    
+    return True
 
 def dequeue_message(sqs_url, receipt_handle):
     """
@@ -115,9 +148,16 @@ def lambda_handler(event, context):
     ip_permission = body["violationDetails"]
 
     success = False
-    success = remediate_violation(group_id, ip_permission)
+    result = remediate_violation(group_id, ip_permission)
+    success = result[0]
+    message = result[1]
 
     if success:
         dequeue_message(sqs_url, receipt_handle)
+        if NOTIFIER_ENABLED == "true":
+            if message["action"] == "RevokeSecurityGroupIngress":
+                fn_name = context.function_name
+                account_id = context.invoked_function_arn.split(":")[4]
+                notify(message, fn_name, account_id)
 
     return True

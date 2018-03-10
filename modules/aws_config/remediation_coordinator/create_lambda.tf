@@ -19,6 +19,7 @@ POLICY
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 resource "aws_iam_role_policy" "p_remediation_coordinator" {
   name = "DD_Config_Policy_Remediation"
@@ -42,7 +43,7 @@ resource "aws_iam_role_policy" "p_remediation_coordinator" {
                 "lambda:Get*"
             ],
             "Effect": "Allow",
-            "Resource": "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:DD_Config_Lambda_*_Remediation"
+            "Resource": "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:DD_Config_Lambda_*_Remediation"
         },
         {
             "Effect": "Allow",

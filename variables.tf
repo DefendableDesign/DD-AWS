@@ -5,3 +5,11 @@ variable "region" {
 variable "enable_auto_response" {
   default = "false"
 }
+
+variable "slack_webhook_url" {
+  default = ""
+}
+
+variable "slack_channel" {
+  default = ""
+}

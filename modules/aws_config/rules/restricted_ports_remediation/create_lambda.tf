@@ -1,7 +1,10 @@
-resource "aws_iam_role" "r_remediation" {
-    name = "DD_Config_Role_EC2_OpenPorts_Remediation"
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
-    assume_role_policy = <<POLICY
+resource "aws_iam_role" "r_remediation" {
+  name = "DD_Config_Role_EC2_OpenPorts_Remediation"
+
+  assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -19,10 +22,10 @@ POLICY
 }
 
 resource "aws_iam_role_policy" "p_remediation" {
-    name = "DD_Config_Policy_EC2_OpenPorts_Remediation"
-    role = "${aws_iam_role.r_remediation.id}"
-    
-    policy = <<POLICY
+  name = "DD_Config_Policy_EC2_OpenPorts_Remediation"
+  role = "${aws_iam_role.r_remediation.id}"
+
+  policy = <<POLICY
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -51,6 +54,13 @@ resource "aws_iam_role_policy" "p_remediation" {
             "Resource": [
                 "*"
             ]
+        },
+        {
+            "Action": [
+                "lambda:InvokeFunction"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:DD_Config_Lambda_Notifier"
         }
     ]
 }
@@ -58,19 +68,18 @@ POLICY
 }
 
 resource "aws_lambda_function" "lf_remediation" {
-    filename         = "${data.archive_file.lambda_remediation.output_path}"
-    function_name    = "DD_Config_Lambda_EC2_OpenPorts_Remediation"
-    role             = "${aws_iam_role.r_remediation.arn}"
-    handler          = "dd_config_lambda_ec2_openports_remediation.lambda_handler"
-    source_code_hash = "${base64sha256(file("${data.archive_file.lambda_remediation.output_path}"))}"
-    runtime          = "python2.7"
-    timeout          = "60"
-}
+  filename         = "${data.archive_file.lambda_remediation.output_path}"
+  function_name    = "DD_Config_Lambda_EC2_OpenPorts_Remediation"
+  role             = "${aws_iam_role.r_remediation.arn}"
+  handler          = "dd_config_lambda_ec2_openports_remediation.lambda_handler"
+  source_code_hash = "${base64sha256(file("${data.archive_file.lambda_remediation.output_path}"))}"
+  runtime          = "python2.7"
+  timeout          = "60"
 
-/*resource "aws_lambda_permission" "coordinator_invoke_permission" {
-    statement_id  = "DD_Config_LambdaPermission_EC2_OpenPorts_Remediation"
-    action        = "lambda:InvokeFunction"
-    function_name = "${aws_lambda_function.lf_remediation.function_name}"
-    principal     = "lambda.amazonaws.com"
-    source_arn    = "${var.remediation_coordinator_lambda_arn}"
-}*/
+  environment {
+    variables = {
+      notifierFnName  = "DD_Config_Lambda_Notifier"
+      notifierEnabled = "${var.notifier_enabled}"
+    }
+  }
+}

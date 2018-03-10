@@ -5,5 +5,3 @@ variable "enable_auto_response" {
 variable "temp_dir" {
   default = "/tmp"
 }
-
-variable "region" {}
