@@ -68,7 +68,7 @@ def remediate_violation_policy(bucket_name):
     """
     #pylint: disable=unused-variable
     s3 = boto3.resource('s3')
-    bucket_policy = s3.BucketPolicy('ddaws-knownpublicbucket1')
+    bucket_policy = s3.BucketPolicy(bucket_name)
 
     policy = json.loads(bucket_policy.policy)
 
