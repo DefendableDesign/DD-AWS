@@ -1,6 +1,6 @@
 resource "aws_iam_role" "r_notifier" {
   count = "${var.slack_webhook_url == "" ? 0 : 1}"
-  name  = "DD_Config_Role_Notifier"
+  name  = "DD_Notifier_Role"
 
   assume_role_policy = <<POLICY
 {
@@ -21,7 +21,7 @@ POLICY
 
 resource "aws_iam_role_policy" "p_notifier" {
   count = "${var.slack_webhook_url == "" ? 0 : 1}"
-  name  = "DD_Config_Policy_Remediation"
+  name  = "DD_Notifier_Policy"
   role  = "${aws_iam_role.r_notifier.id}"
 
   policy = <<POLICY
@@ -52,7 +52,7 @@ POLICY
 resource "aws_lambda_function" "lf_notifier" {
   count            = "${var.slack_webhook_url == "" ? 0 : 1}"
   filename         = "${data.archive_file.lambda_notifier.output_path}"
-  function_name    = "DD_Config_Lambda_Notifier"
+  function_name    = "DD_Notifier_Lambda"
   role             = "${aws_iam_role.r_notifier.arn}"
   handler          = "dd_config_lambda_notifier.lambda_handler"
   source_code_hash = "${base64sha256(file("${data.archive_file.lambda_notifier.output_path}"))}"
@@ -69,7 +69,7 @@ resource "aws_lambda_function" "lf_notifier" {
 
 resource "aws_lambda_permission" "p1" {
   count         = "${var.slack_webhook_url == "" ? 0 : 1}"
-  statement_id  = "DD_Config_LambdaPermission_Notifier_SNS"
+  statement_id  = "DD_Notifier_LambdaPermission_SNS"
   action        = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.lf_notifier.function_name}"
   principal     = "sns.amazonaws.com"

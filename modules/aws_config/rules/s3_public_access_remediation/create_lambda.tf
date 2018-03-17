@@ -61,7 +61,7 @@ resource "aws_iam_role_policy" "p_remediation" {
                 "lambda:InvokeFunction"
             ],
             "Effect": "Allow",
-            "Resource": "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:DD_Config_Lambda_Notifier"
+            "Resource": "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:DD_Notifier_Lambda"
         }
     ]
 }
@@ -79,7 +79,7 @@ resource "aws_lambda_function" "lf_remediation" {
 
   environment {
     variables = {
-      notifierFnName  = "DD_Config_Lambda_Notifier"
+      notifierFnName  = "DD_Notifier_Lambda"
       notifierEnabled = "${var.notifier_enabled}"
     }
   }
