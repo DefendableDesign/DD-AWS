@@ -18,7 +18,6 @@ module "restricted_ports" {
 
 module "restricted_ports_remediation" {
   source                             = "./restricted_ports_remediation"
-  config_is_setup                    = "${var.config_is_setup}"
   remediation_queue_url              = "${var.remediation_queue_url}"
   remediation_queue_arn              = "${var.remediation_queue_arn}"
   remediation_coordinator_lambda_arn = "${var.remediation_coordinator_lambda_arn}"
@@ -34,7 +33,6 @@ module "s3_public_access" {
 
 module "s3_public_access_remediation" {
   source                             = "./s3_public_access_remediation"
-  config_is_setup                    = "${var.config_is_setup}"
   remediation_queue_url              = "${var.remediation_queue_url}"
   remediation_queue_arn              = "${var.remediation_queue_arn}"
   remediation_coordinator_lambda_arn = "${var.remediation_coordinator_lambda_arn}"
