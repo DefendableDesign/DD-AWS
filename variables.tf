@@ -13,3 +13,7 @@ variable "slack_webhook_url" {
 variable "slack_channel" {
   default = ""
 }
+
+variable "enable_cis_level_2_alerts" {
+  default = "true"
+}

@@ -1,3 +1,4 @@
+# Implements AWS CIS Foundations Benchmark 3.1
 resource "aws_cloudwatch_log_metric_filter" "unauthorized_api_calls" {
   name = "DD_BP_MetricFilter_Unauthorized_API_Calls"
 
@@ -26,7 +27,7 @@ resource "aws_cloudwatch_metric_alarm" "unauthorized_api_calls" {
   statistic           = "Sum"
   period              = "60"
   threshold           = "1"
-  alarm_description   = "This metric counts the number of unauthorized AWS API calls"
+  alarm_description   = "This metric counts the number of unauthorized AWS API calls."
   alarm_actions       = ["${var.sns_topic_arn}"]
   treat_missing_data  = "notBreaching"
 }

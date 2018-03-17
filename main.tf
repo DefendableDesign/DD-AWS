@@ -1,6 +1,10 @@
 provider "aws" {
   region  = "${var.region}"
-  version = "1.11"
+  version = "~> 1.11"
+}
+
+provider "archive" {
+  version = "~> 1.0"
 }
 
 terraform {
@@ -15,8 +19,9 @@ module "kms" {
 }
 
 module "best_practice" {
-  source     = "./modules/best_practice"
-  kms_key_id = "${module.kms.kms_key_id}"
+  source                    = "./modules/best_practice"
+  kms_key_id                = "${module.kms.kms_key_id}"
+  enable_cis_level_2_alerts = "${var.enable_cis_level_2_alerts}"
 }
 
 module "config" {

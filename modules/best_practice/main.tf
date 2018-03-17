@@ -10,4 +10,5 @@ module "iam_password_policy" {
 module "cloudtrail_monitoring" {
   source         = "./cloudtrail_monitoring"
   log_group_name = "${module.enable_cloudtrail.log_group_name}"
+  enable_cis_level_2_alerts = "${var.enable_cis_level_2_alerts}"
 }
