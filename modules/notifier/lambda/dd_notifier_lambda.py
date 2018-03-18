@@ -128,7 +128,7 @@ def process_config_event(message):
                                 "value": message["newEvaluationResult"]["annotation"]
                             },
                             {
-                                "title": "Priority",
+                                "title": "Status",
                                 "value": new_result.replace("_", " ").title(),
                                 "short": "true",
                             }
