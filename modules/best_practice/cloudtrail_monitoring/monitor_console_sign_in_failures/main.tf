@@ -1,6 +1,6 @@
 # Implements AWS CIS Foundations Benchmark 3.6
-resource "aws_cloudwatch_log_metric_filter" "console_auth_failures" {
-  name  = "DD_BP_MetricFilter_Console_Auth_Failures"
+resource "aws_cloudwatch_log_metric_filter" "console_sign_in_failures" {
+  name  = "DD_BP_MetricFilter_Console_Sign_In_Failures"
   count = "${var.enable}"
 
   pattern = <<PATTERN
@@ -12,19 +12,19 @@ PATTERN
   log_group_name = "${var.log_group_name}"
 
   metric_transformation {
-    name          = "Console_Auth_Failures"
+    name          = "Console_Sign_In_Failures"
     namespace     = "DD_BP_Metrics"
     value         = "1"
     default_value = "0"
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "console_auth_failures" {
+resource "aws_cloudwatch_metric_alarm" "console_sign_in_failures" {
   count               = "${var.enable}"
-  alarm_name          = "DD_BP_Alarm_Console_Auth_Failures"
+  alarm_name          = "DD_BP_Alarm_Console_Sign_In_Failures"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = "1"
-  metric_name         = "Console_Auth_Failures"
+  metric_name         = "Console_Sign_In_Failures"
   namespace           = "DD_BP_Metrics"
   statistic           = "Sum"
   period              = "60"
