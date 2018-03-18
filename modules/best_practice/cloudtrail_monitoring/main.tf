@@ -32,8 +32,8 @@ module "monitor_cloudtrail_config_changes" {
   sns_topic_arn  = "${module.sns.sns_topic_arn}"
 }
 
-module "monitor_console_auth_failures" {
-  source         = "./monitor_console_auth_failures"
+module "monitor_console_sign_in_failures" {
+  source         = "./monitor_console_sign_in_failures"
   log_group_name = "${var.log_group_name}"
   sns_topic_arn  = "${module.sns.sns_topic_arn}"
   enable         = "${var.enable_cis_level_2_alerts == "true" ? 1 : 0}"

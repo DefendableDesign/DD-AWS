@@ -54,7 +54,7 @@ resource "aws_lambda_function" "lf_notifier" {
   filename         = "${data.archive_file.lambda_notifier.output_path}"
   function_name    = "DD_Notifier_Lambda"
   role             = "${aws_iam_role.r_notifier.arn}"
-  handler          = "dd_config_lambda_notifier.lambda_handler"
+  handler          = "dd_notifier_lambda.lambda_handler"
   source_code_hash = "${base64sha256(file("${data.archive_file.lambda_notifier.output_path}"))}"
   runtime          = "python3.6"
   timeout          = "60"

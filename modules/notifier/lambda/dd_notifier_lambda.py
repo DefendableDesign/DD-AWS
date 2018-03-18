@@ -35,20 +35,20 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ALARM_SEVERITY = {
-    "DD_BP_Alarm_Unauthorized_API_Calls"    : "medium",
-    "DD_BP_Alarm_Console_Login_Without_MFA" : "high",
-    "DD_BP_Alarm_Root_Account_Usage"        : "critical",
-    "DD_BP_Alarm_IAM_Policy_Change"         : "high",
-    "DD_BP_Alarm_CloudTrail_Config_Change"  : "medium",
-    "DD_BP_Alarm_Console_Login_Failure"     : "low",
-    "DD_BP_Alarm_CMK_Disable_Delete"        : "info",
-    "DD_BP_Alarm_S3_Bucket_Policy_Change"   : "medium",
-    "DD_BP_Alarm_Config_Config_Change"      : "high",
-    "DD_BP_Alarm_Security_Group_Change"     : "medium",
-    "DD_BP_Alarm_NACL_Change"               : "medium",
-    "DD_BP_Alarm_Network_Gateway_Change"    : "medium",
-    "DD_BP_Alarm_Route_Table_Change"        : "medium",
-    "DD_BP_Alarm_VPC_Change"                : "medium"
+    "DD_BP_Alarm_Unauthorized_API_Calls"      : "medium",
+    "DD_BP_Alarm_Console_Sign_In_Without_MFA" : "high",
+    "DD_BP_Alarm_Root_Account_Usage"          : "critical",
+    "DD_BP_Alarm_IAM_Policy_Changes"          : "high",
+    "DD_BP_Alarm_CloudTrail_Config_Changes"   : "medium",
+    "DD_BP_Alarm_Console_Sign_In_Failures"    : "medium",
+    "DD_BP_Alarm_Disable_Delete_CMK"          : "info",
+    "DD_BP_Alarm_S3_Bucket_Policy_Changes"    : "medium",
+    "DD_BP_Alarm_AWS_Config_Changes"          : "high",
+    "DD_BP_Alarm_Security_Group_Changes"      : "medium",
+    "DD_BP_Alarm_NACL_Changes"                : "medium",
+    "DD_BP_Alarm_Network_Gateway_Changes"     : "medium",
+    "DD_BP_Alarm_Route_Table_Changes"         : "medium",
+    "DD_BP_Alarm_VPC_Changes"                 : "medium"
 }
 
 SEVERITY_COLOR_ALARM = {
@@ -106,9 +106,33 @@ def process_config_event(message):
                         "text": message_text,
                         "fields": [
                             {
-                                "title": "Priority",
-                                "value": new_result.upper(),
+                                "title": "Rule Name",
+                                "value": rule_name.replace("DD_Config_", ""),
                                 "short": "true"
+                            },
+                            {
+                                "title": "Account ID",
+                                "value": account_id,
+                                "short": "true"
+                            },
+                            {
+                                "title": "Resource Type",
+                                "value": resource_type,
+                                "short": "true"
+                            },
+                            {
+                                "title": "Resource ID",
+                                "value": resource_id,
+                                "short": "true"
+                            },
+                            {
+                                "title": "Message",
+                                "value": message["newEvaluationResult"]["annotation"]
+                            },
+                            {
+                                "title": "Priority",
+                                "value": new_result.replace("_", " ").title(),
+                                "short": "true",
                             }
                         ],
                         "ts": alarm_time
@@ -136,15 +160,31 @@ def process_alarm_event(message):
             "attachments": [
                 {
 
-                    "fallback": "{0}: CloudTrail Alert for {1} in {2}: \n{3}".format(severity.upper(), alarm_name, account_id, message_text),
+                    "fallback": "{0}: CloudTrail Alert for {1} in {2}: \n{3}".format(severity.title(), alarm_name, account_id, message_text),
                     "color": color,
-                    "title": "CloudTrail Alert for {0} in {1}".format(alarm_name, account_id),
-                    "text": message_text,
                     "fields": [
                         {
-                            "title": "Priority",
-                            "value": severity.upper(),
+                            "title": "Alarm Name",
+                            "value": alarm_name.replace("DD_BP_Alarm_", ""),
+							"short": "true"
+                        },
+						{
+                            "title": "Account ID",
+                            "value": account_id,
                             "short": "true"
+                        },
+						{
+                            "title": "Description",
+                            "value": message["AlarmDescription"]
+                        },
+						{
+                            "title": "Message",
+                            "value": message["NewStateReason"]
+                        },
+                        {
+                            "title": "Priority",
+                            "value": severity.title(),
+                            "short": "true",
                         }
                     ],
                     "ts": alarm_time
@@ -155,13 +195,14 @@ def process_alarm_event(message):
 
 def process_remediation_event(event):
     slack_message = None
-    severity     = "critical"
-    color        = SEVERITY_COLOR_ALARM[severity]
-    event_time   = dateutil.parser.parse(event["actionCompleteTime"]).timestamp()
-    account_id   = event["awsAccountId"]
-    message_text = event["message"]
-    resource_id  = event["resourceId"]
+    severity      = "critical"
+    color         = SEVERITY_COLOR_ALARM[severity]
+    event_time    = dateutil.parser.parse(event["actionCompleteTime"]).timestamp()
+    account_id    = event["awsAccountId"]
+    message_text  = event["message"]
+    resource_id   = event["resourceId"]
     resource_type = event["resourceType"]
+    action        = event["action"]
 
     slack_message = {
         "channel": SLACK_CHANNEL,
@@ -170,15 +211,37 @@ def process_remediation_event(event):
         "attachments": [
             {
 
-                "fallback": "{0}: Automated Remediation Taken on {1} ({2}) in {3}: \n{4}".format(severity.upper(), resource_id, resource_type, account_id, message_text),
+                "fallback": "{0}: Automated Remediation Taken on {1} ({2}) in {3}: \n{4}".format(severity.title(), resource_id, resource_type, account_id, message_text),
                 "color": color,
-                "title": "Automated Remediation Taken on {0} ({1}) in {2}".format(resource_id, resource_type, account_id),
-                "text": message_text,
                 "fields": [
                     {
-                        "title": "Priority",
-                        "value": severity.upper(),
+                        "title": "Automated Action",
+                        "value": action,
                         "short": "true"
+                    },
+                    {
+                        "title": "Account ID",
+                        "value": account_id,
+                        "short": "true"
+                    },
+                    {
+                        "title": "Resource Type",
+                        "value": resource_type,
+                        "short": "true"
+                    },
+                    {
+                        "title": "Resource ID",
+                        "value": resource_id,
+                        "short": "true"
+                    },
+                    {
+                        "title": "Message",
+                        "value": message_text
+                    },
+                    {
+                        "title": "Priority",
+                        "value": severity.title(),
+                        "short": "true",
                     }
                 ],
                 "ts": event_time
