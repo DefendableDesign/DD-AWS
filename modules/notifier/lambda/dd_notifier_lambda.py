@@ -83,7 +83,10 @@ def process_config_event(message):
     slack_message = None
     rule_name = message.get("configRuleName", None)
     if rule_name:
-        old_result = message["oldEvaluationResult"]["complianceType"]
+        if message["oldEvaluationResult"] is not None:
+            old_result = message["oldEvaluationResult"]["complianceType"]
+        else:
+            old_result = "Not Recorded"
         new_result = message["newEvaluationResult"]["complianceType"]
         if old_result != new_result:
             color           = SEVERITY_COLOR_CONFIG[new_result]
@@ -102,6 +105,7 @@ def process_config_event(message):
 
                         "fallback": "{0}: AWS Config State Change for {1} in {2}: \n{3}".format(new_result.upper(), rule_name, account_id, message_text),
                         "color": color,
+                        "title": "Config Rule State Change",
                         "fields": [
                             {
                                 "title": "Rule Name",
@@ -124,12 +128,17 @@ def process_config_event(message):
                                 "short": "true"
                             },
                             {
-                                "title": "Message",
+                                "title": "Details",
                                 "value": message["newEvaluationResult"]["annotation"]
                             },
                             {
-                                "title": "Status",
+                                "title": "New Status",
                                 "value": new_result.replace("_", " ").title(),
+                                "short": "true",
+                            },
+                            {
+                                "title": "Old Status",
+                                "value": old_result.replace("_", " ").title(),
                                 "short": "true",
                             }
                         ],
@@ -158,8 +167,9 @@ def process_alarm_event(message):
             "attachments": [
                 {
 
-                    "fallback": "{0}: CloudTrail Alert for {1} in {2}: \n{3}".format(severity.title(), alarm_name, account_id, message_text),
+                    "fallback": "{0}: CloudTrail Alarm for {1} in {2}: \n{3}".format(severity.title(), alarm_name, account_id, message_text),
                     "color": color,
+                    "title": "New CloudTrail Alarm",
                     "fields": [
                         {
                             "title": "Alarm Name",
@@ -176,7 +186,7 @@ def process_alarm_event(message):
                             "value": message["AlarmDescription"]
                         },
 						{
-                            "title": "Message",
+                            "title": "Details",
                             "value": message["NewStateReason"]
                         },
                         {
@@ -211,9 +221,10 @@ def process_remediation_event(event):
 
                 "fallback": "{0}: Automated Remediation Taken on {1} ({2}) in {3}: \n{4}".format(severity.title(), resource_id, resource_type, account_id, message_text),
                 "color": color,
+                "title": "Automated Remediation Taken",
                 "fields": [
                     {
-                        "title": "Automated Action",
+                        "title": "Action",
                         "value": action,
                         "short": "true"
                     },
@@ -233,7 +244,7 @@ def process_remediation_event(event):
                         "short": "true"
                     },
                     {
-                        "title": "Message",
+                        "title": "Details",
                         "value": message_text
                     },
                     {
