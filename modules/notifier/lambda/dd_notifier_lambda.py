@@ -102,8 +102,6 @@ def process_config_event(message):
 
                         "fallback": "{0}: AWS Config State Change for {1} in {2}: \n{3}".format(new_result.upper(), rule_name, account_id, message_text),
                         "color": color,
-                        "title": "AWS Config State Change for {1} in {0}".format(account_id, rule_name),
-                        "text": message_text,
                         "fields": [
                             {
                                 "title": "Rule Name",
